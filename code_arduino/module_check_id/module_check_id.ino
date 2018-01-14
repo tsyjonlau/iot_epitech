@@ -1,3 +1,5 @@
+#define DEBUG_ESP_SSL
+
 #include <SPI.h>
 #include <MFRC522.h>
 
@@ -8,32 +10,21 @@
 
 #include <ESP8266WiFi.h>
 
-//#define SECURE_CO
+#include <WiFiClientSecure.h>
+WiFiClientSecure wifi_client;
 
-#ifdef SECURE_CO
-  #include <WiFiClientSecure.h>
-  WiFiClientSecure wifi_client;
-#else
-  #include <WiFiClient.h>
-  WiFiClient wifi_client;
-#endif
-
-const char* ssid     = "SFR-5ba8";
-const char* password = "DLTYQGFM4XFE";
+const char* ssid     = "IOT_PROJECT";
+const char* password = "iot_epitech";
 
 const char* mqtt_broker_host = "mottet.xyz";
 const uint16_t mqtt_broker_port = 8883;
 
-// mottet.xyz SHA1 fingerprint
-const char* fingerprint = "B0 00 9C 58 D8 01 CF D2 6D F3 A7 53 BD E3 D8 6B F9 FD E3 0F";
-
 #define MODULE_ID "AUTH_1337"
+#define TOPIC_PUB "employee_badging_information"
 
 // Variables to handle connection to MQTT server
 Adafruit_MQTT_Client mqtt(&wifi_client, mqtt_broker_host, mqtt_broker_port, "Module " MODULE_ID);
-
-Adafruit_MQTT_Publish pub = Adafruit_MQTT_Publish(&mqtt, "employee_badging_information");
-
+Adafruit_MQTT_Publish pub = Adafruit_MQTT_Publish(&mqtt, TOPIC_PUB);
 Adafruit_MQTT_Subscribe authorised = Adafruit_MQTT_Subscribe(&mqtt, MODULE_ID);
 
 // LCD Screen init
@@ -45,6 +36,7 @@ LiquidCrystal lcd(15, 0, 16, 2, 5, 4);
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);   // Create MFRC522 instance
 
+// Print on the lcd screen
 void write_lcd(String line1 = "", String line2 = "") {
   if (line1 != "") {
     lcd.setCursor(0, 0);
@@ -56,41 +48,23 @@ void write_lcd(String line1 = "", String line2 = "") {
   }
 }
 
+// Connection to the WIFi router
 void wifi_connect() {
-  //Serial.print("Connecting to ");
-  //Serial.println(ssid);
   write_lcd("", "WiFi connection ");
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
+    write_lcd("", "WiFi connection!");
     delay(500);
+    write_lcd("", "WiFi connection ");
   }
 }
 
-#ifdef SECURE_CO
-void verifyFingerprint() {
-
-  //Serial.print("Secure connection to ");
-  //Serial.println(mqtt_broker_host);
-  while (! wifi_client.connect(mqtt_broker_host, mqtt_broker_port, MODULE_ID)) {
-    //Serial.print(".");
-    delay(2000);
-  }
-
-  if (wifi_client.verify(fingerprint, mqtt_broker_host)) {
-    //Serial.println("Connection secure.");
-  } else {
-    //Serial.println("Connection insecure! Halting execution.");
-    while(1);
-  }
-
-}
-#endif
-
+// Connection to the MQTT broker
 void mqtt_connect() {
-  write_lcd("", "MQTT connection ");
+  write_lcd(" ", "MQTT connection ");
   while(!mqtt.connected()) {
     if (!mqtt.connect()) {
-      delay(3000);
+      delay(1000);
     }
   }
 }
@@ -104,17 +78,14 @@ void setup() {
   mfrc522.PCD_Init();  // Init MFRC522 card
 
   wifi_connect();
-  
-#ifdef SECURE_CO
-  verifyFingerprint();
-#endif
 
+  /* Subscibe BEFORE connection to the broker */
   mqtt.subscribe(&authorised);
   mqtt_connect();
-
   write_lcd("Present your", "ID card...");
 }
 
+// Helper to have a pretty hex UID
 String decToHex(char _byte)
 {
   const char* tab = "0123456789ABCDEF";
@@ -122,11 +93,13 @@ String decToHex(char _byte)
 }
 
 void loop() {
+  // Keep connected to the broker
   if (!mqtt.connected()) {
     mqtt_connect();
+    write_lcd("Present your", "ID card...");
   }
 
-    // Look for new cards, and select one if present
+  // Look for new cards, and select one if present
   if ( ! mfrc522.PICC_IsNewCardPresent() || ! mfrc522.PICC_ReadCardSerial() ) {
     delay(50);
     return;
@@ -145,7 +118,8 @@ void loop() {
   
   // Empty the queue
   while(subscription = mqtt.readSubscription(0));
-  
+
+  // Ask the server if the UID is valide for this module
   if (pub.publish(String("{\"moduleID\":\"" + String(MODULE_ID) + "\",\"cardID\":\"" + cur_str + "\"}").c_str())) {
     subscription = mqtt.readSubscription(5000);
     if (subscription == &authorised && (strcmp((char *)authorised.lastread, "OK") == 0))
