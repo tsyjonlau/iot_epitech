@@ -4,7 +4,9 @@ School term: 2017 - 2018
 
 ## Team
 Benjamin Lépine
+
 Marvin Mottet 
+
 Tsy-Jon Lau
 
 ## Description
