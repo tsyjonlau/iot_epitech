@@ -1,25 +1,34 @@
-
+<!DOCTYPE html>
 <html>
-<head>
-  <script src="jquery.js"></script>
-</head>
-<body>
-  <div id="content">
-
-  </div>
-</body>
-<script>
-
-
-        $.getJSON("/", function(data, status) {
-            var content = "<table>"
-            for(i=0; i<3; i++){
-                content += '<tr><td>' + 'data[i].id ' +  data[i].rfid_key + '</td></tr>';
-            }
-            content += "</table>"
-
-            $('#content').append(content);
-        }
-
-</script>
+  <head>
+    <title>Employee validation list</title>
+  </head>
+  <body>
+      <table id="validations">
+        <thead>
+          <th>id</th>
+          <th>module_id</th>
+          <th>datetime</th>
+          <th>rfid_id</th>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+  </body>
+  <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
+  <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/Dynatable/0.3.1/jquery.dynatable.min.js"></script>
+  <script>
+      $(document).ready(function() {
+        $.get("/validations", function(data) {
+            console.log(data);
+            validations = JSON.parse(data);
+            console.log(validations);
+            $('#validations').dynatable({
+              dataset: {
+                records: validations
+              }
+            });
+        });
+      });  
+  </script>
 </html>
