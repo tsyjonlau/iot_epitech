@@ -1,0 +1,25 @@
+
+<html>
+<head>
+  <script src="jquery.js"></script>
+</head>
+<body>
+  <div id="content">
+
+  </div>
+</body>
+<script>
+
+
+        $.getJSON("/", function(data, status) {
+            var content = "<table>"
+            for(i=0; i<3; i++){
+                content += '<tr><td>' + 'data[i].id ' +  data[i].rfid_key + '</td></tr>';
+            }
+            content += "</table>"
+
+            $('#content').append(content);
+        }
+
+</script>
+</html>
